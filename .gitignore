@@ -9,4 +9,5 @@ frontend/dist/
 
 # Env / secrets
 .env
+backend/.env
 *.local

@@ -61,13 +61,12 @@ export default function App() {
           loading={busy === 1}
           done={step >= 1}
           summary={data[1]?.summary}
-          onRun={(transcript, files) =>
-            run(1, async () => {
-              const res = await api.intake(transcript, files);
-              setCaseId(res.case_id);
-              return res;
-            })
-          }
+          onWorking={(on) => setBusy(on ? 1 : null)}
+          onComplete={({ case_id, summary }) => {
+            setCaseId(case_id);
+            setData((d) => ({ ...d, 1: { summary } }));
+            setStep((s) => Math.max(s, 1));
+          }}
         />
 
         <Entities

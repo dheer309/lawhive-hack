@@ -9,8 +9,42 @@ async function post(path, body) {
   return res.json();
 }
 
+async function postForm(path, form) {
+  const res = await fetch(path, { method: "POST", body: form });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({}));
+    throw new Error(error || `${path} failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Send recorded audio to Whisper; returns { transcript }.
+function transcribe(blob) {
+  const form = new FormData();
+  form.append("audio", blob, "recording.webm");
+  return postForm("/api/transcribe", form);
+}
+
+// intake/clarify are multipart so we can upload document files alongside text.
+function intake(transcript, files = []) {
+  const form = new FormData();
+  form.append("transcript", transcript);
+  files.forEach((f) => form.append("files", f));
+  return postForm("/api/intake", form);
+}
+
+function clarify(case_id, responses, files = []) {
+  const form = new FormData();
+  form.append("case_id", case_id);
+  form.append("responses", JSON.stringify(responses));
+  files.forEach((f) => form.append("files", f));
+  return postForm("/api/clarify", form);
+}
+
 export const api = {
-  intake: (transcript, files) => post("/api/intake", { transcript, files }),
+  transcribe,
+  intake,
+  clarify,
   extractEntities: (case_id) => post("/api/extract-entities", { case_id }),
   connectGmail: (case_id) => post("/api/connect-gmail", { case_id }),
   synthesize: (case_id) => post("/api/synthesize", { case_id }),

@@ -30,16 +30,47 @@ the case — then generates a lawyer-ready document pack.
 
 ## Pipeline stages (and their routes)
 
-1. **Intake** — `POST /api/intake` `{transcript, files}` -> `{case_id, summary}`
+- **Voice** — `POST /api/transcribe` multipart `audio` -> `{transcript}` (OpenAI Whisper)
+1. **Intake** — conversational, in [Intake.jsx](frontend/src/components/Intake.jsx). Both routes are **multipart** so document files upload alongside text:
+   - `POST /api/intake` (form: `transcript`, `files[]`) -> `{case_id, summary, ready, requests[]}`
+   - `POST /api/clarify` (form: `case_id`, `responses` JSON, `files[]`) -> `{summary, ready, requests[]}` — folds answers + newly uploaded docs into the running transcript and re-assesses; capped at `MAX_CLARIFY_ROUNDS` (3) so it always terminates
+   - **Uploaded files are read** (`extract_text` / `ingest_files`: PDF via pypdf, text formats decoded) and embedded in the transcript so the assessment mines them and never re-asks what they contain.
+   - `assess_intake` returns one **ordered** `requests[]` list of `{kind, label, why, value}` — only things not already known. `kind` is `question` (typed/dictated), `confirm` (agent proposes `value`; user taps Yes/No — used whenever it can infer the answer, to minimise typing), or `document` (file upload). Order: (a) personal baseline **one item per fact** (name, email, age, nationality, residence), each only if missing, as `confirm` where inferable else `question`; (b) `document` requests for evidence immediately relevant to what's provided (booking confirmation → boarding pass, rejection email, flight-tracker screenshot); (c) remaining fact/"search-anchor" questions, preferring `confirm` where a value is inferable. `ready=true` with empty `requests` when nothing material is missing.
+   - Frontend renders each request inline: `question` → textarea + 🎙️ dictation; `confirm` → "We have: …" with Yes/No (No reveals an editable box, default Yes = accept); `document` → upload / "can't find" + a Gmail-search fallback (`/api/connect-gmail`, still mocked).
 2. **Entities** — `POST /api/extract-entities` `{case_id}` -> `{names, dates, keywords, addresses}`
-3. **Gmail Connect** — `POST /api/connect-gmail` `{case_id}` -> `{status, emails_found}`
-4. **Synthesis** — `POST /api/synthesize` `{case_id}` -> `{chronology, key_evidence, case_summary}`
+3. **Gmail Connect** — `POST /api/connect-gmail` `{case_id}` -> `{status, emails_found}` *(still mocked — deferred)*
+4. **Synthesis** — `POST /api/synthesize` `{case_id}` -> `{chronology, key_evidence, analysis, legislation}`
+   - `chronology[]`: `{date, event, evidence_ids[]}` — `evidence_ids` reference `key_evidence[].id` (E1, E2…)
+   - `key_evidence[]`: `{id, source, detail}`
+   - `analysis`: detailed plain-English narrative of what happened (strengths/weaknesses/open questions)
+   - `legislation[]`: `{title, provision, relevance, url}` — `url` is a verified legislation.gov.uk link
 5. **Recommendation** — `POST /api/recommend` `{case_id}` -> `{recommendation, confidence, reasoning}`
-6. **Document Pack** — `POST /api/generate-pack` `{case_id}` -> `{pack_url}`
+6. **Document Pack** — `POST /api/generate-pack` `{case_id}` -> `{pack_url}`; the pack is served as HTML at `GET /api/pack/<case_id>`
 
-Every route currently returns hardcoded mock data and logs the request body.
-Replace one route's body with real logic at a time — the frontend already drives
-the full flow end to end.
+### How the backend works now
+
+- **Real Claude** (`claude-opus-4-8`, adaptive thinking + structured outputs) drives intake,
+  entities, synthesis, and recommendation. State is held per `case_id` in an in-memory
+  `CASES` dict (no DB) — each stage reads what earlier stages stored.
+- **Legislation is grounded, not hallucinated:** Claude proposes Acts/sections; the backend
+  verifies each against the **legislation.gov.uk** Atom feed and attaches the canonical URL.
+- **Resilience:** every stage falls back to a coherent deposit-dispute mock if the model call
+  fails (missing key, network) so a live demo never hard-breaks — failures are logged loudly.
+- **Voice** uses OpenAI Whisper; without `OPENAI_API_KEY` the `/api/transcribe` route returns
+  503 and the UI tells the user to type instead.
+- **Gmail** is still mocked — wiring deferred.
+
+### Env (`backend/.env`, gitignored — see `.env.example`)
+
+Auth goes through the **Lawhive hackathon gateway**, not api.anthropic.com:
+- `ANTHROPIC_BASE_URL=https://ai.hack.lawhive.co.uk`
+- `ANTHROPIC_AUTH_TOKEN=sk-...` — bearer token (NOT `api_key`; don't also set `ANTHROPIC_API_KEY`)
+- `ANTHROPIC_MODEL=vertex_ai/claude-opus-4-7` — the **only** model the gateway routes
+- `OPENAI_API_KEY` — optional, enables voice transcription
+
+Gateway caveats baked into the code: it **silently ignores `output_config.format`**
+(Vertex doesn't enforce JSON schemas), so `claude_json()` instructs the schema in
+the prompt and parses the reply; `cache_control` and experimental betas are avoided.
 
 ## Running locally
 
