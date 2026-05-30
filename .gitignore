@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local screenshots / playwright artifacts (root only — keep public/ assets)
+/*.png
+.playwright-mcp/
+
+# large source assets
+*.blend
+*.blend1
+.scaffold-tmp/
+
+# keep the example env (but not real env files)
+!.env.example

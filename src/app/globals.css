@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-ink: #0b0b0c;
+  --color-ink-soft: #141518;
+  --color-ink-line: #26282d;
+  --color-paper: #f4f1e8;
+  --color-paper-dim: #e6e1d3;
+  --color-paper-line: #d2ccba;
+  --color-lime: #c9f24d;
+  --color-lime-deep: #a8d12f;
+  --color-muted: #8b8d94;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+}
+
+/* Mono micro-label, echoing the Lawhive problem-pack typography */
+.label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.66rem;
+  line-height: 1;
+}
+
+/* Subtle dotted grid background for the studio floor */
+.dotgrid {
+  background-image: radial-gradient(
+    var(--color-ink-line) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+.diaggrid {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-paper-line) 0,
+    var(--color-paper-line) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.working-dot {
+  animation: blink 1.1s infinite;
+}
+
+/* thin custom scrollbars on the board */
+.nicescroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.nicescroll::-webkit-scrollbar-thumb {
+  background: var(--color-paper-line);
+  border-radius: 999px;
+}
+.nicescroll::-webkit-scrollbar-track {
+  background: transparent;
 }
