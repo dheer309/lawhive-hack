@@ -3,7 +3,12 @@
     "allow": [
       "Bash(xargs kill -9)",
       "Bash(git add *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "Bash(git archive *)",
+      "Bash(tar -x -C frontend)",
+      "Bash(sed -n '1,40p' frontend/tsconfig.json)",
+      "Bash(npm install *)",
+      "Bash(npm run *)"
     ]
   }
 }
