@@ -68,14 +68,35 @@ export default function Synthesis({ locked, loading, done, data, onRun }) {
                     className={`rounded-lg border bg-black/30 p-3 text-sm transition ${
                       highlight === item.id
                         ? "border-sky-400 ring-2 ring-sky-400/50"
-                        : "border-white/10"
+                        : item.corroborated === false
+                          ? "border-amber-500/30"
+                          : "border-white/10"
                     }`}
                   >
                     <span className="mr-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">
                       {item.id}
                     </span>
-                    <span className="font-semibold text-sky-200">{item.source}</span>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-sky-300 hover:underline"
+                      >
+                        {item.source} ↗
+                      </a>
+                    ) : (
+                      <span className="font-semibold text-sky-200">{item.source}</span>
+                    )}
                     <span className="text-gray-400"> — {item.detail}</span>
+                    {item.corroborated === false && (
+                      <span
+                        className="ml-1 cursor-help font-semibold text-amber-400"
+                        title="Not yet evidenced — this rests only on your account, so it's less credible until backed by a document or email."
+                      >
+                        {" "}⚠️ only your account
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

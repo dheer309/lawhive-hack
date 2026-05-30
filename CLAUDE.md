@@ -38,14 +38,14 @@ the case — then generates a lawyer-ready document pack.
    - `assess_intake` returns one **ordered** `requests[]` list of `{kind, label, why, value}` — only things not already known. `kind` is `question` (typed/dictated), `confirm` (agent proposes `value`; user taps Yes/No — used whenever it can infer the answer, to minimise typing), or `document` (file upload). Order: (a) personal baseline **one item per fact** (name, email, age, nationality, residence), each only if missing, as `confirm` where inferable else `question`; (b) `document` requests for evidence immediately relevant to what's provided (booking confirmation → boarding pass, rejection email, flight-tracker screenshot); (c) remaining fact/"search-anchor" questions, preferring `confirm` where a value is inferable. `ready=true` with empty `requests` when nothing material is missing.
    - Frontend renders each request inline: `question` → textarea + 🎙️ dictation; `confirm` → "We have: …" with Yes/No (No reveals an editable box, default Yes = accept); `document` → upload / "can't find" + a Gmail-search fallback (`/api/connect-gmail`, still mocked).
 2. **Entities** — `POST /api/extract-entities` `{case_id}` -> `{names, dates, keywords, addresses}`
-3. **Gmail Connect** — `POST /api/connect-gmail` `{case_id}` -> `{status, emails_found}` *(still mocked — deferred)*
+3. **Gmail Connect** — `POST /api/connect-gmail` `{case_id}`. Real Google OAuth + Gmail search when `GOOGLE_CLIENT_ID/SECRET` are set, else a mock (`configured:false`). Flow: first call returns `{status:"needs_auth", auth_url}`; the UI opens it, the user consents, Google redirects to `GET /api/gmail/callback` (stores creds on the case); the next call searches the inbox with a query built from the extracted entities (`build_gmail_query`), folds the found email bodies into the transcript, and returns `{status:"connected", emails_found, results[]}`. Self-managed in [GmailConnect.jsx](frontend/src/components/GmailConnect.jsx).
 4. **Synthesis** — `POST /api/synthesize` `{case_id}` -> `{chronology, key_evidence, analysis, legislation}`
    - `chronology[]`: `{date, event, evidence_ids[]}` — `evidence_ids` reference `key_evidence[].id` (E1, E2…)
    - `key_evidence[]`: `{id, source, detail}`
    - `analysis`: detailed plain-English narrative of what happened (strengths/weaknesses/open questions)
    - `legislation[]`: `{title, provision, relevance, url}` — `url` is a verified legislation.gov.uk link
 5. **Recommendation** — `POST /api/recommend` `{case_id}` -> `{recommendation, confidence, reasoning}`
-6. **Document Pack** — `POST /api/generate-pack` `{case_id}` -> `{pack_url}`; the pack is served as HTML at `GET /api/pack/<case_id>`
+6. **Document Pack** — `POST /api/generate-pack` `{case_id}` -> `{pack_url}`; served as HTML at `GET /api/pack/<case_id>`. `draft_deliverables` produces a **lean, do-it-for-you** pack (no law/citations): where/how to file + form field values, a plain-English statement to paste, fully-**drafted emails** ready to send, an evidence bundle split into gathered vs needed-from-you, and a short list of **client-only actions**. The recommendation's `next_steps` are likewise client-only — CasePilot prepares everything it can (emails, submission, bundle).
 
 ### How the backend works now
 

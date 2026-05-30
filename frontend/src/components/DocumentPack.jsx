@@ -7,7 +7,8 @@ export default function DocumentPack({ locked, loading, done, data, onRun }) {
   return (
     <Stage index={6} title="Document Pack" locked={locked} loading={loading} done={done}>
       <p className="mb-3 text-sm text-gray-400">
-        Chronology, sourced evidence, case summary and legal basis — lawyer-ready.
+        Everything ready to file: your details for the form, a plain-English statement to paste,
+        the emails we've drafted for you, your evidence bundle, and the few things only you can do.
       </p>
 
       {!ready ? (
@@ -25,7 +26,7 @@ export default function DocumentPack({ locked, loading, done, data, onRun }) {
           rel="noreferrer"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400"
         >
-          ⬇ Download case pack (PDF)
+          ⬇ Open your case pack
         </a>
       )}
     </Stage>

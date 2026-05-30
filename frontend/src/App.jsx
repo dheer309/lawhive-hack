@@ -82,7 +82,12 @@ export default function App() {
           loading={busy === 3}
           done={step >= 3}
           data={data[3]}
-          onRun={() => run(3, () => api.connectGmail(caseId))}
+          caseId={caseId}
+          onWorking={(on) => setBusy(on ? 3 : null)}
+          onComplete={(res) => {
+            setData((d) => ({ ...d, 3: res }));
+            setStep((s) => Math.max(s, 3));
+          }}
         />
 
         <Synthesis
