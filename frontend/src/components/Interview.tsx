@@ -9,8 +9,6 @@ import { DictateButton } from "@/lib/voice";
 interface Answer {
   text?: string;
   confirm?: "yes" | "no";
-  file?: File | null;
-  unavailable?: boolean;
 }
 
 export function Interview({
@@ -24,17 +22,23 @@ export function Interview({
   onSubmit: (responses: ClarifyResponse[], files: File[]) => Promise<void>;
   onSkip: () => void;
 }) {
-  const { requests } = interview;
+  const docReqs = interview.requests.filter((r) => r.kind === "document");
+  const other = interview.requests.filter((r) => r.kind !== "document");
+
   const [ans, setAns] = useState<Record<number, Answer>>({});
+  const [docFiles, setDocFiles] = useState<File[]>([]);
+  const [dragging, setDragging] = useState(false);
   const [gmail, setGmail] = useState<GmailResult | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const update = (i: number, patch: Answer) =>
-    setAns((a) => ({ ...a, [i]: { ...a[i], ...patch } }));
+  const update = (i: number, patch: Answer) => setAns((a) => ({ ...a, [i]: { ...a[i], ...patch } }));
   const append = (i: number, t: string) =>
     setAns((a) => ({ ...a, [i]: { ...a[i], text: a[i]?.text ? `${a[i].text} ${t}` : t } }));
 
-  const hasDocs = requests.some((r) => r.kind === "document");
+  function addFiles(list: FileList | null) {
+    const picked = list ? Array.from(list) : [];
+    if (picked.length) setDocFiles((f) => [...f, ...picked]);
+  }
 
   async function searchGmail() {
     setBusy(true);
@@ -51,20 +55,11 @@ export function Interview({
 
   async function submit() {
     const responses: ClarifyResponse[] = [];
-    const files: File[] = [];
-    requests.forEach((r, i) => {
-      const a = ans[i] || {};
-      if (r.kind === "document") {
-        if (a.file) {
-          files.push(a.file);
-          responses.push({ question: `Document: ${r.label}`, answer: `Provided "${a.file.name}"` });
-        } else if (a.unavailable) {
-          responses.push({
-            question: `Document: ${r.label}`,
-            answer: `Don't have / can't find${gmail ? " — please search my Gmail to recover it." : ""}`,
-          });
-        }
-      } else if (r.kind === "confirm") {
+    // question / confirm
+    other.forEach((r) => {
+      const idx = interview.requests.indexOf(r);
+      const a = ans[idx] || {};
+      if (r.kind === "confirm") {
         const conf = a.confirm ?? "yes";
         let answer = conf === "yes" ? r.value || "" : (a.text || "").trim();
         if (conf === "no" && !answer) answer = `That's not correct (not "${r.value}").`;
@@ -73,9 +68,26 @@ export function Interview({
         responses.push({ question: r.label, answer: (a.text || "").trim() });
       }
     });
+    // documents (grouped)
+    if (docReqs.length) {
+      const names = docReqs.map((r) => r.label).join("; ");
+      const uploaded = docFiles.map((f) => f.name).join(", ");
+      let answer = `Key documents requested: ${names}. `;
+      answer += uploaded ? `Files I've uploaded: ${uploaded}. ` : "I haven't uploaded any of these. ";
+      if (gmail) {
+        answer +=
+          gmail.status === "needs_auth"
+            ? "I'm connecting Gmail so you can search my inbox for them."
+            : `I connected Gmail (${gmail.emails_found ?? 0} relevant emails found) to find the rest.`;
+      } else if (!uploaded) {
+        answer += "I don't have these to hand right now.";
+      }
+      responses.push({ question: "Supporting documents", answer });
+    }
+
     setBusy(true);
     try {
-      await onSubmit(responses, files);
+      await onSubmit(responses, docFiles);
     } finally {
       setBusy(false);
     }
@@ -92,7 +104,9 @@ export function Interview({
       </div>
 
       <div className="nicescroll flex-1 space-y-3 overflow-y-auto px-5 py-4">
-        {requests.map((r, i) => {
+        {/* question / confirm */}
+        {other.map((r) => {
+          const i = interview.requests.indexOf(r);
           const a = ans[i] || {};
           if (r.kind === "confirm") {
             const conf = a.confirm ?? "yes";
@@ -133,36 +147,6 @@ export function Interview({
               </div>
             );
           }
-          if (r.kind === "document") {
-            return (
-              <div key={i} className="rounded-lg border border-paper-line bg-white/50 p-3">
-                <p className="text-sm font-medium text-ink">📄 {r.label}</p>
-                {r.why && <p className="text-xs text-ink/50">{r.why}</p>}
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <label
-                    className={`cursor-pointer rounded-md border border-paper-line px-3 py-1 text-xs ${a.unavailable ? "pointer-events-none opacity-40" : "text-ink/80 hover:border-ink/40"}`}
-                  >
-                    {a.file ? `✓ ${a.file.name}` : "Upload"}
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) =>
-                        e.target.files?.[0] && update(i, { file: e.target.files[0], unavailable: false })
-                      }
-                    />
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-ink/55">
-                    <input
-                      type="checkbox"
-                      checked={!!a.unavailable}
-                      onChange={(e) => update(i, { unavailable: e.target.checked, file: null })}
-                    />
-                    Can&apos;t find this
-                  </label>
-                </div>
-              </div>
-            );
-          }
           return (
             <div key={i}>
               <label className="text-sm font-medium text-ink">{r.label}</label>
@@ -180,22 +164,84 @@ export function Interview({
           );
         })}
 
-        {hasDocs &&
-          (gmail ? (
-            <p className="rounded-lg border border-paper-line bg-white/50 p-3 text-xs text-ink/70">
-              {gmail.status === "needs_auth"
-                ? "Finish Google sign-in in the new tab, then submit — we'll pull the documents from your inbox."
-                : `✓ Searched your inbox — ${gmail.emails_found ?? 0} relevant emails found.`}
-            </p>
-          ) : (
-            <button
-              onClick={searchGmail}
-              disabled={busy}
-              className="w-full rounded-lg border border-paper-line bg-white/50 py-2 text-xs font-semibold text-ink/80 transition hover:border-ink/40 disabled:opacity-50"
+        {/* documents — gathered together, or found in the inbox */}
+        {docReqs.length > 0 && (
+          <div className="rounded-lg border border-paper-line bg-white/50 p-3">
+            <p className="text-sm font-semibold text-ink">Key documents that would strengthen your case</p>
+            <ul className="mt-1.5 space-y-1">
+              {docReqs.map((r, i) => (
+                <li key={i} className="text-xs text-ink/70">
+                  📄 <span className="font-medium text-ink/85">{r.label}</span>
+                  {r.why && <span className="text-ink/50"> — {r.why}</span>}
+                </li>
+              ))}
+            </ul>
+
+            {/* Option A: drop them all */}
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                addFiles(e.dataTransfer.files);
+              }}
+              className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed py-5 text-center text-xs transition ${
+                dragging ? "border-ink bg-paper-dim" : "border-paper-line text-ink/60 hover:border-ink/40"
+              }`}
             >
-              🔎 Can&apos;t find a document? Search my Gmail
-            </button>
-          ))}
+              <span className="font-medium text-ink/80">Have them? Drop or select them all here</span>
+              <span className="text-ink/45">PDFs, images, emails — any of the above, together</span>
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {docFiles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {docFiles.map((f, i) => (
+                  <span key={i} className="flex items-center gap-1 rounded-md bg-paper-dim px-2 py-1 text-xs text-ink/70">
+                    📄 {f.name}
+                    <button
+                      onClick={() => setDocFiles((fs) => fs.filter((_, idx) => idx !== i))}
+                      className="text-ink/40 hover:text-ink"
+                      aria-label="Remove"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Option B: let us find them */}
+            <div className="mt-3 border-t border-paper-line pt-3">
+              {gmail ? (
+                <p className="text-xs text-ink/70">
+                  {gmail.status === "needs_auth"
+                    ? "Finish Google sign-in in the new tab, then submit — we'll pull the documents from your inbox."
+                    : `✓ Searched your inbox — ${gmail.emails_found ?? 0} relevant emails found.`}
+                </p>
+              ) : (
+                <button
+                  onClick={searchGmail}
+                  disabled={busy}
+                  className="w-full rounded-lg border border-paper-line py-2 text-xs font-semibold text-ink/80 transition hover:border-ink/40 disabled:opacity-50"
+                >
+                  Don&apos;t have them to hand? 🔎 Connect Gmail and let CasePilot find them
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 gap-2 border-t border-paper-line px-5 py-3">

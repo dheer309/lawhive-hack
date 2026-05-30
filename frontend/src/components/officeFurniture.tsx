@@ -184,23 +184,24 @@ export function FurnitureProp({ kind }: { kind: string }) {
 
 // placement by floor-tile index (col, row); rendered at the tile centre.
 export const FURNITURE: { id: string; col: number; row: number; kind: string }[] = [
-  // cubicle walls tucked behind the back desk row + down the left side
-  { id: "divB0", col: 0, row: -0.45, kind: "dividerR" },
-  { id: "divB1", col: 1, row: -0.45, kind: "dividerR" },
-  { id: "divB2", col: 2, row: -0.45, kind: "dividerR" },
-  { id: "divL0", col: -0.45, row: 0, kind: "dividerL" },
-  { id: "divL1", col: -0.45, row: 1, kind: "dividerL" },
+  // cubicle walls tucked behind the back desk row (matches the staggered back desks)
+  { id: "divB0", col: 0.0, row: -0.4, kind: "dividerR" },
+  { id: "divB1", col: 1.7, row: -0.4, kind: "dividerR" },
+  { id: "divB2", col: 3.4, row: -0.4, kind: "dividerR" },
+  // down the left side
+  { id: "divL0", col: -0.5, row: 0.4, kind: "dividerL" },
+  { id: "divL1", col: -0.5, row: 1.6, kind: "dividerL" },
   // back wall furniture
-  { id: "bookshelf", col: 1, row: -1, kind: "bookshelf" },
-  { id: "cooler", col: 2.4, row: -1, kind: "cooler" },
-  { id: "cabinet", col: 3, row: 0, kind: "cabinet" },
+  { id: "bookshelf", col: 0.7, row: -1, kind: "bookshelf" },
+  { id: "cooler", col: 2.6, row: -1, kind: "cooler" },
+  { id: "cabinet", col: 4.9, row: -0.1, kind: "cabinet" },
   // greenery + lamps
   { id: "plantBL", col: -1, row: -1, kind: "plant" },
-  { id: "plantR", col: 3, row: 1, kind: "lamp" },
-  { id: "plantFL", col: -1, row: 2, kind: "plant" },
-  { id: "lampF", col: 2.6, row: 2.2, kind: "lamp" },
-  { id: "plantFR", col: 3, row: 2.4, kind: "plant" },
-  // waiting area
-  { id: "coffee", col: 0.4, row: 2.2, kind: "coffee" },
-  { id: "chairW", col: 1.4, row: 2.4, kind: "chair" },
+  { id: "plantR", col: 5.1, row: 1.1, kind: "lamp" },
+  { id: "plantFL", col: -1, row: 2.6, kind: "plant" },
+  { id: "lampF", col: 3.9, row: 3.0, kind: "lamp" },
+  { id: "plantFR", col: 5.2, row: 2.9, kind: "plant" },
+  // waiting area (front-left, clear of the desks)
+  { id: "coffee", col: 0.1, row: 3.0, kind: "coffee" },
+  { id: "chairW", col: 1.1, row: 3.1, kind: "chair" },
 ];

@@ -77,8 +77,8 @@ export function Intake({
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-5 py-10">
       <div className="mb-1 flex items-center gap-2">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-lime text-sm font-black text-ink">F</span>
-        <span className="label text-muted">The Firm · Lawhive Hackathon</span>
+        <span className="grid h-7 w-7 place-items-center rounded-md bg-lime text-sm font-black text-ink">L</span>
+        <span className="label text-muted">The Lawfice · Lawhive Hackathon</span>
       </div>
       <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
         Your pocket law firm.
@@ -140,7 +140,7 @@ export function Intake({
           onClick={() => onStart(text.trim() || HERO_TRANSCRIPT, files)}
           className="rounded-xl bg-lime px-5 py-3 text-sm font-bold text-ink transition hover:bg-lime-deep"
         >
-          Start the firm →
+          Start the Lawfice →
         </button>
         <button
           onClick={() => setText(HERO_TRANSCRIPT)}

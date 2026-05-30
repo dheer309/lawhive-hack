@@ -32,8 +32,8 @@ export default function Home() {
     <div className="flex h-screen flex-col gap-3 p-3 sm:p-4">
       <header className="flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-lime text-sm font-black text-ink">F</span>
-          <span className="text-sm font-semibold">The Firm</span>
+          <span className="grid h-7 w-7 place-items-center rounded-md bg-lime text-sm font-black text-ink">L</span>
+          <span className="text-sm font-semibold">The Lawfice</span>
           {state.demo && (
             <span className="label rounded bg-ink-soft px-2 py-1 text-muted">demo replay</span>
           )}

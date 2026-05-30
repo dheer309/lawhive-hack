@@ -8,7 +8,8 @@
       "Bash(tar -x -C frontend)",
       "Bash(sed -n '1,40p' frontend/tsconfig.json)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(venv/bin/python -c \"import app; print\\('backend import OK'\\)\")"
     ]
   }
 }

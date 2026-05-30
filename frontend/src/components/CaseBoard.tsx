@@ -261,7 +261,7 @@ export function CaseBoard({
 
         {/* 6 — pack */}
         <Section agent="pack" status={state.statuses.pack}>
-          {r.pack && <PackPanel pack={r.pack} synthesis={r.synthesis} />}
+          {r.pack && <PackPanel pack={r.pack} synthesis={r.synthesis} caseId={state.caseId} />}
         </Section>
 
         <div className="h-8" />

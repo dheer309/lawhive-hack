@@ -9,7 +9,7 @@ import { FURNITURE, FurnitureProp } from "./officeFurniture";
 // ---- isometric projection ---------------------------------------------------
 const TILE_W = 128;
 const TILE_H = 72;
-const ORIGIN = { x: 332, y: 164 };
+const ORIGIN = { x: 300, y: 150 };
 const WALL = 96;
 const WAINSCOT = WALL * 0.42;
 type Pt = { x: number; y: number };
@@ -21,24 +21,26 @@ const pt = (p: Pt) => `${p.x},${p.y}`;
 const rise = (p: Pt, h: number): Pt => ({ x: p.x, y: p.y - h });
 const mix = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 
+// Two staggered rows of three: the front row is offset ~0.8 col so each back desk
+// sits in the GAP between two front desks — keeps nameplates visible + breaks the grid.
 const DESKS: { id: StageId; col: number; row: number }[] = [
-  { id: "intake", col: 0, row: 0 },
-  { id: "entities", col: 1, row: 0 },
-  { id: "gmail", col: 2, row: 0 },
-  { id: "synthesis", col: 2, row: 1 },
-  { id: "recommend", col: 1, row: 1 },
-  { id: "pack", col: 0, row: 1 },
+  { id: "intake", col: 0.0, row: 0.0 },
+  { id: "entities", col: 1.7, row: 0.1 },
+  { id: "gmail", col: 3.4, row: 0.0 },
+  { id: "pack", col: 0.85, row: 1.85 },
+  { id: "recommend", col: 2.55, row: 1.95 },
+  { id: "synthesis", col: 4.25, row: 1.85 },
 ];
 const P = Object.fromEntries(DESKS.map((d) => [d.id, project(d.col + 0.5, d.row + 0.5)])) as Record<StageId, Pt>;
 
 const A = project(-1, -1);
-const B = project(4, -1);
-const C = project(4, 3);
-const D = project(-1, 3);
+const B = project(5.5, -1);
+const C = project(5.5, 3.4);
+const D = project(-1, 3.4);
 
 function ComputerDesk({ accent, active }: { accent: string; active: boolean }) {
   return (
-    <svg width="150" height="82" viewBox="0 0 150 82" className="drop-shadow-[0_8px_6px_rgba(50,30,10,0.35)]">
+    <svg width="124" height="68" viewBox="0 0 150 82" className="drop-shadow-[0_8px_6px_rgba(50,30,10,0.35)]">
       <path d="M24 32 L75 12 L126 32 L75 52 Z" fill="#a35f30" stroke="#824b25" />
       <path d="M24 32 L75 52 L75 72 L24 52 Z" fill="#763f1f" />
       <path d="M126 32 L75 52 L75 72 L126 52 Z" fill="#874c25" />
@@ -113,7 +115,7 @@ export function Office({ state }: { state: FirmState }) {
     <section className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-ink-line bg-[#0a0b0d]">
       <div className="z-20 flex items-center justify-between px-4 pt-3">
         <div>
-          <p className="label text-muted">The firm · virtual office</p>
+          <p className="label text-muted">The Lawfice · virtual office</p>
           <h2 className="mt-1 font-mono text-sm text-paper/90">
             {state.phase === "done" ? "Case worked — see the board →" : state.active ? AGENT_MAP[state.active].working : "Standing by…"}
           </h2>
@@ -123,7 +125,7 @@ export function Office({ state }: { state: FirmState }) {
 
       <div className="relative flex-1">
         <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 80% at 50% 46%, rgba(120,130,120,0.16), rgba(10,11,13,0) 64%)" }} />
-        <div className="absolute left-1/2 top-1/2" style={{ width: 720, height: 480, transform: "translate(-50%, -50%) scale(0.96)", transformOrigin: "center" }}>
+        <div className="absolute left-1/2 top-1/2" style={{ width: 720, height: 480, transform: "translate(-50%, -50%) scale(0.9)", transformOrigin: "center" }}>
           <svg width="720" height="480" viewBox="0 0 720 480" className="absolute inset-0">
             {/* walls: cream wainscot + sage upper */}
             <polygon points={`${pt(D)} ${pt(A)} ${pt(rise(A, WAINSCOT))} ${pt(rise(D, WAINSCOT))}`} fill="#d8d2c0" />
@@ -141,8 +143,8 @@ export function Office({ state }: { state: FirmState }) {
             <Blinds {...winR} />
 
             {/* grey office carpet */}
-            {[-1, 0, 1, 2, 3].flatMap((i) =>
-              [-1, 0, 1, 2].map((j) => {
+            {[-1, 0, 1, 2, 3, 4, 5].flatMap((i) =>
+              [-1, 0, 1, 2, 3].map((j) => {
                 const a = project(i, j), b = project(i + 1, j), c = project(i + 1, j + 1), d = project(i, j + 1);
                 const dark = (i + j) % 2 === 0;
                 return <polygon key={`${i}.${j}`} points={`${pt(a)} ${pt(b)} ${pt(c)} ${pt(d)}`} fill={dark ? "#a4abae" : "#9ba2a6"} stroke="#959ca0" strokeWidth="0.6" />;
@@ -177,12 +179,12 @@ export function Office({ state }: { state: FirmState }) {
                 {active && <Plumbob />}
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/characters/${id}.png`} alt={meta.name} draggable={false} className={`pointer-events-none w-auto select-none ${status === "pending" ? "opacity-50 saturate-50" : ""}`} style={{ height: 116, filter: active ? `drop-shadow(0 0 10px ${meta.accent}) drop-shadow(0 3px 3px rgba(0,0,0,0.5))` : "drop-shadow(0 4px 4px rgba(0,0,0,0.45))" }} />
+                  <img src={`/characters/${id}.png`} alt={meta.name} draggable={false} className={`pointer-events-none w-auto select-none ${status === "pending" ? "opacity-50 saturate-50" : ""}`} style={{ height: 108, filter: active ? `drop-shadow(0 0 10px ${meta.accent}) drop-shadow(0 3px 3px rgba(0,0,0,0.5))` : "drop-shadow(0 4px 4px rgba(0,0,0,0.45))" }} />
                   {status === "done" && (
                     <span className="absolute right-0 top-3 grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold text-ink shadow" style={{ backgroundColor: meta.accent }}>✓</span>
                   )}
                 </div>
-                <div className="-mt-9">
+                <div className="-mt-[60px]">
                   <ComputerDesk accent={meta.accent} active={active} />
                 </div>
                 <div className={`-mt-1 rounded px-2 py-0.5 text-center ${active ? "bg-ink" : "bg-black/40"}`} style={active ? { boxShadow: `inset 0 0 0 1px ${meta.accent}` } : undefined}>

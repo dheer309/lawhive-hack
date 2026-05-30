@@ -5,6 +5,7 @@
 import type {
   ClarifyResult,
   EntitiesResult,
+  GmailDraftResult,
   GmailResult,
   IntakeResult,
   PackResult,
@@ -87,6 +88,9 @@ export const api = {
   connectGmail: (case_id: string) =>
     postJson<GmailResult>("/api/connect-gmail", { case_id }),
 
+  gmailDraft: (case_id: string, email: { to: string; subject: string; body: string }) =>
+    postJson<GmailDraftResult>("/api/gmail/draft", { case_id, ...email }),
+
   async synthesize(case_id: string): Promise<SynthesisResult> {
     const r = await postJson<SynthesisResult>("/api/synthesize", { case_id });
     // Evidence links come back relative to the backend; make them absolute.
@@ -101,6 +105,6 @@ export const api = {
 
   async generatePack(case_id: string): Promise<PackResult> {
     const r = await postJson<PackResult>("/api/generate-pack", { case_id });
-    return { pack_url: absoluteUrl(r.pack_url) };
+    return { pack_url: absoluteUrl(r.pack_url), emails: r.emails ?? [] };
   },
 };

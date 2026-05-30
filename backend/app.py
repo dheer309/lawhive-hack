@@ -565,10 +565,22 @@ INTAKE_INSTRUCTIONS = (
     "dump, a previous answer, or an attached document), treat it as KNOWN — do NOT ask it and do NOT "
     "show it as a 'confirm'. Use 'confirm' ONLY for something you inferred that the user did not "
     "state. Keep the user's effort to an absolute minimum.\n"
-    " BIAS STRONGLY TO DONE: the moment you know who the client is, the core facts of what happened, "
-    "the current status, and their goal, set ready=true and return an EMPTY list. Do not keep probing "
-    "for nice-to-have details, exact figures, or more documents — those get gathered later and must "
-    "never hold the case up.\n"
+    " BIAS TO DONE: don't drag things out — once identity, the core facts, the status and the goal "
+    "are known, and the EVIDENCE COMPLETENESS checks below are satisfied, set ready=true and return "
+    "an EMPTY list. Don't chase trivia or exact figures.\n"
+    " EVIDENCE COMPLETENESS (these take priority over finishing — but never re-ask something already "
+    "shown). Do these checks ONLY AFTER the client has uploaded documents or had their inbox searched "
+    "— i.e. once the account contains [Attached document: ...] / [Email ...] blocks or a 'Supporting "
+    "documents' answer. Do NOT raise them in the first document round, before anything is ingested:\n"
+    "   • Money spent / losses: if the client mentioned an out-of-pocket expense or loss (meals, "
+    "taxis, transport, accommodation, fees, etc.) and there's still no proof of it in evidence, flag "
+    "it as ONE gentle document request — say a receipt would be ideal, but that if they don't have "
+    "the receipt a bank or credit-card statement showing the payment works just as well.\n"
+    "   • Missing documents: when the client doesn't have / can't find a requested document, ask once "
+    "whether they have an ALTERNATIVE that proves the same fact (no boarding pass → booking "
+    "confirmation; no contract → confirming emails).\n"
+    "   • Anything else: ask a single open question — whether there is any OTHER document or evidence "
+    "that would strengthen the case — before you finish.\n"
     "Order the list exactly like this:\n"
     "   (a) FIRST, the personal baseline — ONE item per fact, NEVER bundled together. Cover each of "
     "these separately and only if not already clearly known: full name, email address, age, "
@@ -695,7 +707,11 @@ def extract_entities():
     return jsonify(**entities)
 
 
-GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+# readonly = search the inbox; compose = save drafts (the "send to drafts" button).
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.compose",
+]
 # PKCE code_verifier per OAuth state, set when we build the auth URL and needed
 # again at the callback to exchange the code.
 GMAIL_VERIFIERS = {}
@@ -854,6 +870,52 @@ def connect_gmail():
     except Exception as e:  # noqa: BLE001
         log.error("gmail search failed: %s", e)
         return jsonify(status="error", error=str(e)[:200], configured=True)
+
+
+def create_gmail_draft(case, to, subject, body):
+    """Save a draft email to the connected Gmail account (needs the compose scope)."""
+    from email.mime.text import MIMEText
+
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
+    creds = Credentials.from_authorized_user_info(json.loads(case["gmail_creds"]), GMAIL_SCOPES)
+    if not creds.valid and creds.refresh_token:
+        creds.refresh(Request())
+        case["gmail_creds"] = creds.to_json()
+
+    svc = build("gmail", "v1", credentials=creds, cache_discovery=False)
+    mime = MIMEText(body or "")
+    # The model often returns a label ("StratAIR Customer Relations") or a blank
+    # `to`; Gmail rejects a non-address To header. Use only a real address if one
+    # is present, otherwise leave it for the user to fill in Gmail.
+    addr = re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", to or "")
+    if addr:
+        mime["To"] = addr.group(0)
+    mime["Subject"] = subject or ""
+    raw = base64.urlsafe_b64encode(mime.as_bytes()).decode()
+    return svc.users().drafts().create(userId="me", body={"message": {"raw": raw}}).execute()
+
+
+@app.post("/api/gmail/draft")
+def gmail_draft():
+    """{ case_id, to, subject, body } -> save the drafted email to the user's Gmail drafts."""
+    body = request.get_json(silent=True) or {}
+    cid = body.get("case_id", "")
+    case = CASES.get(cid)
+    if not gmail_configured():
+        return jsonify(status="unconfigured")
+    if not case or "gmail_creds" not in case:
+        return jsonify(status="needs_auth", auth_url=_gmail_auth_url(cid))
+    try:
+        draft = create_gmail_draft(case, body.get("to", ""), body.get("subject", ""), body.get("body", ""))
+        return jsonify(status="created", draft_id=draft.get("id"))
+    except Exception as e:  # noqa: BLE001
+        log.error("gmail draft failed: %s", e)
+        # Most likely the connected account was authorised before the compose scope
+        # was added — prompt a reconnect.
+        return jsonify(status="error", error=str(e)[:200], auth_url=_gmail_auth_url(cid))
 
 
 @app.post("/api/synthesize")
@@ -1026,7 +1088,10 @@ def generate_pack():
     except Exception as e:  # noqa: BLE001
         log.error("deliverables draft failed: %s", e)
         case["deliverables"] = None
-    return jsonify(pack_url=f"/api/pack/{cid}")
+    # The drafted email(s) are returned to the UI as a "next step" before the pack
+    # (with a Send-to-Gmail-drafts button); the pack HTML itself omits them.
+    emails = (case.get("deliverables") or {}).get("emails", [])
+    return jsonify(pack_url=f"/api/pack/{cid}", emails=emails)
 
 
 @app.get("/api/pack/<case_id>")
@@ -1077,14 +1142,6 @@ def render_pack(case_id, case):
         f"<tr><td class='k'>{esc(f['field'])}</td><td>{esc(f['value'])}</td></tr>"
         for f in d.get("fields", [])
     )
-    emails = "".join(
-        f"""<div class="email">
-          <p class="muted">{esc(e.get('purpose'))}</p>
-          <p><b>To:</b> {esc(e.get('to'))}<br><b>Subject:</b> {esc(e.get('subject'))}</p>
-          <div class="prose body">{esc(e.get('body'))}</div>
-        </div>"""
-        for e in d.get("emails", [])
-    )
     gathered = "".join(
         f"<li>✅ <b>{esc(e['document'])}</b>{(' — ' + esc(e['note'])) if e.get('note') else ''}</li>"
         for e in d.get("evidence", []) if e.get("status") == "gathered"
@@ -1122,7 +1179,6 @@ def render_pack(case_id, case):
 
   <h2>What you're claiming</h2><p>{esc(d.get('remedy'))}</p>
 
-  {f"<h2>Emails we've drafted for you</h2><p class='muted'>Ready to send — just copy.</p>{emails}" if emails else ""}
 
   <h2>Evidence bundle</h2>
   {f"<p class='muted'>Gathered for you:</p><ul>{gathered}</ul>" if gathered else ""}

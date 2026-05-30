@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Firm — your pocket law firm",
+  title: "The Lawfice — your pocket law firm",
   description:
     "Describe your problem; watch a team of AI specialists work your case and hand you a real next step.",
 };

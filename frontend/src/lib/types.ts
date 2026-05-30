@@ -100,8 +100,23 @@ export interface RecommendResult {
   next_steps?: string[];
 }
 
+export interface EmailDraft {
+  purpose: string;
+  to: string;
+  subject: string;
+  body: string;
+}
+
 export interface PackResult {
   pack_url: string;
+  emails?: EmailDraft[];
+}
+
+export interface GmailDraftResult {
+  status: string; // "created" | "needs_auth" | "error" | "unconfigured"
+  draft_id?: string;
+  auth_url?: string;
+  error?: string;
 }
 
 export interface StageResults {

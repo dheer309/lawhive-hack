@@ -7,7 +7,7 @@ export default function CastPreview() {
   return (
     <div className="min-h-screen px-6 py-10">
       <div className="mx-auto max-w-5xl">
-        <p className="label text-muted">The Firm · the cast</p>
+        <p className="label text-muted">The Lawfice · the cast</p>
         <h1 className="mt-2 text-3xl font-bold">Flat-vector characters (no pixel art)</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
           Each agent is a parametric SVG bust — different hair, glasses, beard and skin
