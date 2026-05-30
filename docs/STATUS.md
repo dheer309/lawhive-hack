@@ -57,27 +57,47 @@ auto-falls-back to a canned demo — click **"Watch the worked demo"** on the la
   6.9 MB, Blender 3.01). Full Sims-1 roster (Goth/Newbie/Pleasant/NPCs + 3 rigged).
 - Casting (agent ← Sims mesh): intake←Betty Newbie, entities←Bob Newbie, gmail←Bella Goth,
   synthesis←chris roomies, recommend←mortimer Goth (suit), pack←Michael Bachelor.
-- Re-render: `scripts/render_chars.py` (ortho iso cam, transparent PNG, stands the
-  Y-up models upright). `scripts/inspect_blend.py` dumps the scene graph.
+- **`public/characters/*.png` are now SEATED** (rendered by `scripts/render_seated.py`).
+  Standing variants come from `scripts/render_chars.py` (kept as fallback; restore with
+  `git checkout public/characters` or from `/tmp/standing_backup` if it survived).
+- **Seated technique** (the cast meshes are static — no armatures): only 3 Sims are rigged
+  (`Rigged Michelle`=adult ♀, `Rigged Burglar`=adult ♂, `Rigged Daniel`=child). `render_seated.py`
+  copies skin weights from the body-type-matching rigged mesh onto each cast mesh by
+  nearest-vertex (KDTree, shared Sims base-body local space), binds to the rig, poses it
+  seated (thigh +75°, shin −85°, spine1 −12° about bone-local X; +Z up, body faces −Y), and
+  renders all 6 at a **shared ortho scale**, then they're cropped to a shared alpha bbox so
+  feet-baseline + scale stay uniform. Body type picked by mesh width: 1.50≈♀ rig, 1.56+≈♂ rig.
+- `scripts/inspect_rigs.py` dumps armatures/bones + which meshes are skinned (use to re-derive
+  the casting). `scripts/inspect_blend.py` dumps the full scene graph.
 - **Blender** was downloaded portably (no install): `/tmp/blender.dmg` (4.2.9 arm64) →
   copied to `/tmp/Blender.app` (de-quarantined). Both are in `/tmp` so may vanish on reboot —
   re-mount the dmg or re-download `https://download.blender.org/release/Blender4.2/blender-4.2.9-macos-arm64.dmg`.
-- Run: `/tmp/Blender.app/Contents/MacOS/Blender -b "The sims characters release.blend" --python scripts/render_chars.py`
+- Run: `/tmp/Blender.app/Contents/MacOS/Blender -b "The sims characters release.blend" --python scripts/render_seated.py`
+  (output → `/tmp/seated_out`, then crop+install via the PIL one-liner in git history, or
+  point `SEATED_OUT` at a dir). `Office.tsx` pulls the desk up over the seated lap with
+  `-mt-[72px]` (was `-mt-9` for standing).
 
 ## Decisions / gotchas
 - Visual direction: Sims-1 "Dunder Mifflin" office (per user refs). **No pixel art** (user
   dislikes it). Bright look was muted to grey carpet / sage+cream walls.
 - Casting names = The Office (Pam, Dwight, Jim, Angela, Michael, Oscar).
+- Office floor plan (`Office.tsx` `DESKS`): two **staggered** rows of three — the front row is
+  offset ~0.8 col so each back desk sits in the GAP between two front desks. This is deliberate:
+  it stops the front row from covering the back row's nameplates and breaks the grid look. Room
+  bounds (`A/B/C/D`), carpet ranges, `FURNITURE` (in `officeFurniture.tsx`), and the container
+  `scale(0.9)` are all tuned to that spread — change them together.
 - Dev server: deleting `.next` while running corrupts it — restart cleanly (`pkill -f "next dev"; rm -rf .next; npm run dev`).
 - `.env*` is gitignored except `.env.example`.
 
 ## Done
 Pipeline integration, board, office (furnished, Sims sprites, plumbob/bubble/case-file),
-demo fallback, names, committed + pushed to `feat/interactive-ui`, README.
+demo fallback, names, README. **Seated character poses** (weight-transfer rig, see above) —
+all 6 agents now sit at their desks; verified across done/active/pending states via the
+worked-demo path. (Commit pending — uncommitted: 6 seated PNGs, `Office.tsx` desk offset,
+`scripts/render_seated.py` + `scripts/inspect_rigs.py`.)
 
 ## Next (not done)
-1. **Seated character poses** — re-render the *rigged* Sims (Rigged Michelle/Daniel/Burglar
-   have armatures) sitting at desks. More involved (pose bones in Blender).
-2. **Live end-to-end test** against the actual running Flask backend (only the canned/replay
-   path is verified so far).
-3. Optional polish: refine cubicle divider placement, scale characters, reception desk.
+1. **Live end-to-end test** against the actual running Flask backend (only the canned/replay
+   path is verified so far; backend wasn't running this session).
+2. Optional polish: arms-forward "typing" seated pose (currently arms rest at sides); refine
+   cubicle divider placement; reception desk; nameplate crowding on the front row.
